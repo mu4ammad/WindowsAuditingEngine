@@ -1,4 +1,5 @@
-﻿# Security Alert Background Service - MONITORING ONLY
+﻿# Security Alert Background Service - ENHANCED VERSION
+# Added persistent logging and expanded event monitoring
 
 param(
     [switch]$Install,
@@ -14,6 +15,7 @@ $ServiceScript = "$ServicePath\SecurityAlertService.ps1"
 $DashboardScript = "$ServicePath\SecurityDashboard.ps1"
 $StatusFile = "$ServicePath\ServiceStatus.json"
 $ConfigPath = "$ServicePath\AlertEngineConfig.json"
+$LogFile = "$ServicePath\SecurityEvents.log"
 
 # Ensure admin privileges
 if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
@@ -56,7 +58,30 @@ function Save-ServiceConfig {
     $Config | ConvertTo-Json | Out-File $ConfigPath -Encoding UTF8
 }
 
-#function to load existing events from JSON file
+# ENHANCED: Write events to persistent log file
+function Write-EventToLog {
+    param($EventRecord, $LogLevel = "INFO")
+    
+    try {
+        $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $logEntry = "$timestamp | $LogLevel | $($EventRecord.EventId) | $($EventRecord.Name) | $($EventRecord.User) | $($EventRecord.Computer)"
+        
+        # Append to log file
+        Add-Content -Path $LogFile -Value $logEntry -Encoding UTF8
+        
+        # Optional: Rotate log file if it gets too large (>10MB)
+        if ((Get-Item $LogFile -ErrorAction SilentlyContinue).Length -gt 10MB) {
+            $backupLog = "$ServicePath\SecurityEvents_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+            Move-Item $LogFile $backupLog
+            Write-Host "Rotated log file to: $backupLog" -ForegroundColor Yellow
+        }
+        
+    } catch {
+        Write-Host "Error writing to log file: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
+# Function to load existing events from JSON file
 function Get-ExistingEvents {
     param($StatusFile)
     
@@ -76,7 +101,7 @@ function Get-ExistingEvents {
     return @()
 }
 
-#function to check if event already exists
+# Function to check if event already exists
 function Test-EventExists {
     param($ExistingEvents, $NewRecordId)
     
@@ -88,7 +113,7 @@ function Test-EventExists {
     return $false
 }
 
-#status update with file locking protection
+# Status update with file locking protection
 function Update-ServiceStatus {
     param(
         $Status = "Running",
@@ -125,18 +150,15 @@ function Update-ServiceStatus {
                 $existingStatus.Status -ne $Status -or
                 $existingStatus.RecentEvents.Count -ne $RecentEvents.Count) {
                 $needsUpdate = $true
-                Write-Host "Status file needs update: EventCount($($existingStatus.EventCount)->$EventCount) AlertCount($($existingStatus.AlertCount)->$AlertCount)" -ForegroundColor Yellow
             }
         } catch {
             $needsUpdate = $true
-            Write-Host "Error reading existing status, forcing update" -ForegroundColor Yellow
         }
     } else {
         $needsUpdate = $true
     }
     
     if (-not $needsUpdate) {
-        Write-Host "No changes detected, skipping file update" -ForegroundColor Gray
         return
     }
     
@@ -148,24 +170,13 @@ function Update-ServiceStatus {
     while ($attempts -lt $maxAttempts -and -not $success) {
         try {
             $attempts++
-            
-            # Convert to JSON first
             $jsonData = $statusData | ConvertTo-Json -Depth 3
-            
-            # Write to temporary file first, then rename (atomic operation)
             $tempFile = "$StatusFile.tmp"
             $jsonData | Out-File $tempFile -Encoding UTF8 -Force
-            
-            # Rename temp file to actual file (atomic on Windows)
             Move-Item $tempFile $StatusFile -Force
-            
             $success = $true
-            Write-Host "Status updated successfully with $($RecentEvents.Count) events (attempt $attempts)" -ForegroundColor Green
             
         } catch {
-            Write-Host "Status update attempt $attempts failed: $($_.Exception.Message)" -ForegroundColor Red
-            
-            # Clean up temp file if it exists
             if (Test-Path "$StatusFile.tmp") {
                 Remove-Item "$StatusFile.tmp" -Force -ErrorAction SilentlyContinue
             }
@@ -174,10 +185,6 @@ function Update-ServiceStatus {
                 Start-Sleep -Milliseconds 200
             }
         }
-    }
-    
-    if (-not $success) {
-        Write-Host "Failed to update status after $maxAttempts attempts" -ForegroundColor Red
     }
 }
 
@@ -199,23 +206,20 @@ function Send-AlertEmail {
     }
 }
 
-# MAIN MONITORING FUNCTION - FIXED
+# ENHANCED: Expanded event monitoring with more event types
 function Start-BackgroundMonitoring {
     $config = Get-ServiceConfig
     $EventCount = 0
     $AlertCount = 0
     $LastEventId = 0
     
-    # LOAD EXISTING EVENTS FROM FILE (don't start fresh!)
+    # Load existing events from file
     $RecentEvents = Get-ExistingEvents -StatusFile $StatusFile
     $EventCount = $RecentEvents.Count
     
-    # Find the highest RecordId to continue from where we left off
     if ($RecentEvents.Count -gt 0) {
         $LastEventId = ($RecentEvents | ForEach-Object { [int]$_.RecordId } | Measure-Object -Maximum).Maximum
         Write-Host "Resuming monitoring from RecordId: $LastEventId" -ForegroundColor Cyan
-        
-        # Count existing alerts
         $AlertCount = ($RecentEvents | Where-Object { $_.Color -eq "danger" -or $_.Color -eq "warning" }).Count
     }
     
@@ -224,15 +228,40 @@ function Start-BackgroundMonitoring {
         Send-AlertEmail -Subject "Security Service Started" -Body "Security Alert Service started on $env:COMPUTERNAME at $(Get-Date). Loaded $($RecentEvents.Count) existing events."
     }
     
-    # Event type descriptions
+    # ENHANCED: Extended event type definitions
     $EventTypes = @{
+        # Authentication Events
         4624 = @{ Name = "Successful Logon"; Icon = "✅"; Color = "success" }
         4625 = @{ Name = "Failed Logon"; Icon = "❌"; Color = "danger" }
-        4720 = @{ Name = "User Account Created"; Icon = "👤"; Color = "warning" }
-        4719 = @{ Name = "Audit Policy Changed"; Icon = "⚙️"; Color = "danger" }
-        4672 = @{ Name = "Special Privileges Assigned"; Icon = "🔑"; Color = "warning" }
+        4634 = @{ Name = "Account Logoff"; Icon = "🚪"; Color = "info" }
         4648 = @{ Name = "Explicit Credential Logon"; Icon = "🔐"; Color = "info" }
-        4634 = @{ Name = "Account Logged Off"; Icon = "🚪"; Color = "info" }
+        4778 = @{ Name = "Session Reconnected"; Icon = "🔄"; Color = "info" }
+        4779 = @{ Name = "Session Disconnected"; Icon = "↩️"; Color = "info" }
+        
+        # Account Management Events
+        4720 = @{ Name = "User Account Created"; Icon = "👤"; Color = "warning" }
+        4726 = @{ Name = "User Account Deleted"; Icon = "🗑️"; Color = "warning" }
+        4728 = @{ Name = "User Added to Security Group"; Icon = "➕"; Color = "warning" }
+        4729 = @{ Name = "User Removed from Security Group"; Icon = "➖"; Color = "warning" }
+        4738 = @{ Name = "User Account Changed"; Icon = "✏️"; Color = "warning" }
+        4740 = @{ Name = "User Account Locked"; Icon = "🔒"; Color = "danger" }
+        4767 = @{ Name = "User Account Unlocked"; Icon = "🔓"; Color = "warning" }
+        4781 = @{ Name = "Account Name Changed"; Icon = "📝"; Color = "warning" }
+        
+        # System/Policy Events
+        4672 = @{ Name = "Special Privileges Assigned"; Icon = "🔑"; Color = "warning" }
+        4719 = @{ Name = "Audit Policy Changed"; Icon = "⚙️"; Color = "danger" }
+        
+        # Network Events
+        5140 = @{ Name = "Network Share Accessed"; Icon = "📁"; Color = "info" }
+        5156 = @{ Name = "Network Connection Allowed"; Icon = "🌐"; Color = "info" }
+        5157 = @{ Name = "Network Connection Blocked"; Icon = "🚧"; Color = "warning" }
+        
+        # Authentication Protocol Events
+        4768 = @{ Name = "Kerberos TGT Requested"; Icon = "🎫"; Color = "info" }
+        4769 = @{ Name = "Kerberos Service Ticket"; Icon = "🎟️"; Color = "info" }
+        4771 = @{ Name = "Kerberos Pre-auth Failed"; Icon = "🚫"; Color = "danger" }
+        4776 = @{ Name = "Domain Controller Auth"; Icon = "🏢"; Color = "info" }
     }
     
     # Function to get username from SID
@@ -255,21 +284,21 @@ function Start-BackgroundMonitoring {
     
     Write-Host "🛡️ Security monitoring started..." -ForegroundColor Green
     Write-Host "Loaded $($RecentEvents.Count) existing events, starting from RecordId $LastEventId" -ForegroundColor Cyan
-    Write-Host "Monitoring Event IDs: 4624, 4625, 4720, 4719, 4672, 4648, 4634" -ForegroundColor Cyan
+    Write-Host "Monitoring $(($EventTypes.Keys | Measure-Object).Count) different event types" -ForegroundColor Cyan
     
     while ($true) {
         try {
-            # Get new security events (only newer than our last recorded event)
+            # ENHANCED: Monitor all defined event types
+            $MonitoredEventIds = $EventTypes.Keys
             $NewEvents = Get-WinEvent -LogName Security -MaxEvents 50 -ErrorAction SilentlyContinue | 
-                         Where-Object { $_.RecordId -gt $LastEventId -and $_.Id -in @(4625, 4624, 4720, 4719, 4672, 4648, 4634) }
+                         Where-Object { $_.RecordId -gt $LastEventId -and $_.Id -in $MonitoredEventIds }
             
             $newEventsAdded = 0
             $lastAlertMessage = ""
             
             foreach ($Event in $NewEvents) {
-                # DOUBLE-CHECK: Make sure this event doesn't already exist
+                # Skip if event already exists
                 if (Test-EventExists -ExistingEvents $RecentEvents -NewRecordId $Event.RecordId) {
-                    Write-Host "Skipping duplicate event RecordId: $($Event.RecordId)" -ForegroundColor Yellow
                     continue
                 }
                 
@@ -299,13 +328,22 @@ function Start-BackgroundMonitoring {
                     RecordId = $Event.RecordId
                 }
                 
-                # ADD NEW EVENT TO THE BEGINNING (most recent first)
+                # ENHANCED: Write to persistent log file
+                $logLevel = switch ($EventInfo.Color) {
+                    "danger" { "DANGER" }
+                    "warning" { "WARNING" }
+                    "success" { "SUCCESS" }
+                    "info" { "INFO" }
+                    default { "INFO" }
+                }
+                Write-EventToLog -EventRecord $EventRecord -LogLevel $logLevel
+                
+                # Add new event to the beginning (most recent first)
                 $RecentEvents = @($EventRecord) + $RecentEvents
                 
-                # OPTIONAL: Trim old events if we have too many (keep last 100)
+                # Trim old events if we have too many (keep last 100)
                 if ($RecentEvents.Count -gt 100) {
                     $RecentEvents = $RecentEvents | Select-Object -First 100
-                    Write-Host "Trimmed old events, keeping most recent 100" -ForegroundColor Yellow
                 }
                 
                 # Analyze event for alerts
@@ -336,10 +374,32 @@ function Start-BackgroundMonitoring {
                         Send-AlertEmail -Subject "New User Account" -Body $AlertMessage
                     }
                     
+                    4726 {  # User account deleted
+                        $AlertTriggered = $true
+                        $AlertMessage = "User account deleted: $Username"
+                        Send-AlertEmail -Subject "User Account Deleted" -Body $AlertMessage
+                    }
+                    
+                    4740 {  # Account locked
+                        $AlertTriggered = $true
+                        $AlertMessage = "🔒 Account locked: $Username"
+                        Send-AlertEmail -Subject "Account Lockout" -Body $AlertMessage
+                    }
+                    
                     4719 {  # Audit policy changed
                         $AlertTriggered = $true
                         $AlertMessage = "🚨 CRITICAL: Audit policy changed by: $Username"
                         Send-AlertEmail -Subject "Critical: Policy Changed" -Body $AlertMessage
+                    }
+                    
+                    4728 {  # User added to security group
+                        $AlertTriggered = $true
+                        $AlertMessage = "User added to security group: $Username"
+                    }
+                    
+                    4738 {  # User account changed
+                        $AlertTriggered = $true
+                        $AlertMessage = "User account modified: $Username"
                     }
                     
                     4624 {  # Successful logon
@@ -348,6 +408,16 @@ function Start-BackgroundMonitoring {
                     
                     4634 {  # Logoff
                         $AlertMessage = "User logged off: $Username"
+                    }
+                    
+                    4672 {  # Special privileges assigned
+                        $AlertTriggered = $true
+                        $AlertMessage = "Administrative privileges granted: $Username"
+                    }
+                    
+                    5157 {  # Network connection blocked
+                        $AlertTriggered = $true
+                        $AlertMessage = "Network connection blocked"
                     }
                 }
                 
@@ -369,7 +439,7 @@ function Start-BackgroundMonitoring {
                 )
             }
             
-            # ONLY UPDATE FILE IF WE ADDED NEW EVENTS
+            # Only update file if we added new events
             if ($newEventsAdded -gt 0) {
                 Write-Host "Added $newEventsAdded new events. Total events: $($RecentEvents.Count)" -ForegroundColor Green
                 Update-ServiceStatus -Status "Monitoring" -LastEvent $lastAlertMessage -EventCount $EventCount -AlertCount $AlertCount -RecentEvents $RecentEvents
@@ -388,12 +458,6 @@ function Start-BackgroundMonitoring {
     }
 }
 
-# Create dashboard script (separate file)
-function New-DashboardScript {
-    # This function is handled by SecurityDashboard.ps1 - no longer needed here
-    Write-Host "Dashboard functionality moved to SecurityDashboard.ps1" -ForegroundColor Green
-}
-
 # Install as Windows service
 function Install-SecurityService {
     Write-Host "Installing Security Alert Service..." -ForegroundColor Green
@@ -405,8 +469,6 @@ function Install-SecurityService {
     }
     
     # Create scheduled tasks
-    
-    # Background monitoring service (hidden)
     $ServiceAction = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$ServiceScript`" -Start"
     $ServiceTrigger = New-ScheduledTaskTrigger -AtStartup
     $ServiceSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -Hidden
@@ -418,12 +480,24 @@ function Install-SecurityService {
         Write-Host "❌ Failed to create service task: $($_.Exception.Message)" -ForegroundColor Red
     }
     
+    # Initialize config file if it doesn't exist
+    if (!(Test-Path $ConfigPath)) {
+        Save-ServiceConfig $DefaultConfig
+        Write-Host "✅ Created default configuration file" -ForegroundColor Green
+    }
+    
+    # Create initial log file
+    if (!(Test-Path $LogFile)) {
+        "# Security Events Log - Started $(Get-Date)" | Out-File $LogFile -Encoding UTF8
+        Write-Host "✅ Created event log file: $LogFile" -ForegroundColor Green
+    }
+    
     Write-Host "`n🎯 Installation Summary:" -ForegroundColor Cyan
     Write-Host "Service Script: $ServiceScript" -ForegroundColor White
     Write-Host "Dashboard Script: $DashboardScript" -ForegroundColor White
-    Write-Host "`nNext steps:" -ForegroundColor Yellow
-    Write-Host "1. .\SecurityAlertService.ps1 -Start    (start monitoring)" -ForegroundColor White
-    Write-Host "2. .\SecurityDashboard.ps1             (open dashboard)" -ForegroundColor White
+    Write-Host "Event Log File: $LogFile" -ForegroundColor White
+    Write-Host "Config File: $ConfigPath" -ForegroundColor White
+    Write-Host "`nMonitoring $(($EventTypes.Keys | Measure-Object).Count) different security event types" -ForegroundColor Green
 }
 
 # Command handling
@@ -433,7 +507,8 @@ switch ($true) {
     }
     
     $Start {
-        Write-Host "Starting Security Alert Monitoring Service..." -ForegroundColor Green
+        Write-Host "Starting Enhanced Security Alert Monitoring Service..." -ForegroundColor Green
+        Write-Host "Now monitoring 20+ security event types with persistent logging" -ForegroundColor Cyan
         Start-BackgroundMonitoring
     }
     
@@ -448,6 +523,11 @@ switch ($true) {
         } else {
             Write-Host "Service not running" -ForegroundColor Red
         }
+        
+        if (Test-Path $LogFile) {
+            $logSize = (Get-Item $LogFile).Length
+            Write-Host "Log File: $LogFile ($('{0:N2}' -f ($logSize/1KB)) KB)" -ForegroundColor White
+        }
     }
     
     $Uninstall {
@@ -458,16 +538,27 @@ switch ($true) {
     
     default {
         Write-Host @"
-🚨 Security Alert Service v3.0 - MONITORING ONLY
+🚨 Enhanced Security Alert Service v3.1
+
+New Features:
+✅ 20+ Security Event Types Monitored
+✅ Persistent Event Logging to SecurityEvents.log  
+✅ Enhanced User Account Management Monitoring
+✅ Network Security Event Detection
+✅ Kerberos Authentication Monitoring
 
 Commands:
   .\SecurityAlertService.ps1 -Install     Install background monitoring service
-  .\SecurityAlertService.ps1 -Start       Start monitoring (run once to test)
-  .\SecurityAlertService.ps1 -Status      Check service status
+  .\SecurityAlertService.ps1 -Start       Start monitoring (enhanced event detection)
+  .\SecurityAlertService.ps1 -Status      Check service status and log file size
   .\SecurityAlertService.ps1 -Uninstall   Remove service
 
 For Dashboard:
   .\SecurityDashboard.ps1                 Open web dashboard
+
+Log Files:
+  SecurityEvents.log                      Persistent event log
+  AlertEngineConfig.json                  Configuration settings
 
 "@ -ForegroundColor Green
     }

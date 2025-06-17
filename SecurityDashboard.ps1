@@ -1,4 +1,4 @@
-﻿# Security Dashboard with Auto Port Detection
+﻿# Security Dashboard with Sleek Matte Design
 Add-Type -AssemblyName System.Web
 
 $StatusFile = "C:\SecurityLogs\ServiceStatus.json"
@@ -93,26 +93,18 @@ function Get-SystemStatus {
     return $defaultStatus
 }
 
-# Enhanced HTML with better styling
-# Enhanced Dashboard with better event handling
+# ENHANCED: Sleek Matte Dashboard Design
 function Get-DashboardHTML {
     $status = Get-SystemStatus
     
-    # DEBUGGING: Check what we're getting
-    Write-Host "Dashboard status object:" -ForegroundColor Cyan
-    Write-Host "Status: $($status.Status)" -ForegroundColor White
-    Write-Host "EventCount: $($status.EventCount)" -ForegroundColor White
-    
-    # Get recent events with better error handling and LIMITS
+    # Get recent events with better error handling and limits
     $recentEvents = @()
     $totalEventsInSystem = 0
     
     if ($status.RecentEvents -and $status.RecentEvents.Count -gt 0) {
         $totalEventsInSystem = $status.RecentEvents.Count
-        
-        # LIMIT: Only take the most recent 25 events for display to prevent browser overload
-        $recentEvents = $status.RecentEvents | Select-Object -First 25
-        
+        # Display most recent 30 events for better performance
+        $recentEvents = $status.RecentEvents | Select-Object -First 30
         Write-Host "Total events in system: $totalEventsInSystem" -ForegroundColor Yellow
         Write-Host "Displaying most recent: $($recentEvents.Count) events" -ForegroundColor Green
     } else {
@@ -128,184 +120,297 @@ function Get-DashboardHTML {
     <title>Security Alert Dashboard - Port $Port</title>
     <meta http-equiv="refresh" content="30">
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            color: white;
-            min-height: 100vh;
-            overflow-x: hidden;
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
         }
-        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: #0f0f0f;
+            color: #e4e4e7;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        .container { 
+            max-width: 1400px; 
+            margin: 0 auto; 
+            padding: 24px; 
+        }
+        
         .header { 
             text-align: center; 
-            margin-bottom: 30px; 
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 30px;
-            border: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 32px; 
+            background: #18181b;
+            border-radius: 12px;
+            padding: 32px 24px;
+            border: 1px solid #27272a;
         }
-        .debug-info {
-            background: rgba(255,255,0,0.1);
-            padding: 10px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-family: monospace;
-            font-size: 0.9em;
-        }
-        .limit-warning {
-            background: rgba(255,165,0,0.2);
-            padding: 10px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-            border: 1px solid rgba(255,165,0,0.3);
-        }
+        
         .header h1 {
-            font-size: 2.5rem;
-            margin: 0 0 10px 0;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #fafafa;
+            letter-spacing: -0.025em;
         }
+        
+        .header .subtitle {
+            font-size: 1rem;
+            color: #a1a1aa;
+            margin-bottom: 16px;
+        }
+        
         .port-info {
-            background: rgba(0,255,136,0.2);
-            padding: 10px 20px;
-            border-radius: 25px;
+            background: #0ea5e9;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
             display: inline-block;
-            margin-top: 10px;
-            border: 1px solid rgba(0,255,136,0.3);
+            font-size: 0.875rem;
+            font-weight: 500;
         }
+        
         .status-grid { 
             display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
             gap: 20px; 
-            margin-bottom: 30px; 
+            margin-bottom: 32px; 
         }
+        
         .status-card { 
-            background: rgba(255,255,255,0.15); 
-            backdrop-filter: blur(10px); 
-            border-radius: 15px; 
-            padding: 20px; 
-            text-align: center;
-            border: 1px solid rgba(255,255,255,0.2);
-            transition: all 0.3s ease;
+            background: #18181b;
+            border: 1px solid #27272a;
+            border-radius: 12px; 
+            padding: 24px; 
+            transition: all 0.2s ease;
         }
+        
         .status-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            border-color: #3f3f46;
+            transform: translateY(-2px);
         }
-        .status-value { 
-            font-size: 2em; 
-            font-weight: bold; 
-            margin: 15px 0; 
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        
+        .status-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
         }
+        
         .status-label { 
-            font-size: 0.9em; 
-            opacity: 0.9; 
+            font-size: 0.875rem; 
+            color: #a1a1aa;
+            font-weight: 500;
             text-transform: uppercase; 
-            letter-spacing: 1px; 
+            letter-spacing: 0.05em; 
         }
-        .status-running { color: #00ff88; text-shadow: 0 0 10px #00ff88; }
-        .status-error { color: #ff4757; text-shadow: 0 0 10px #ff4757; }
-        .status-unknown { color: #ffa502; text-shadow: 0 0 10px #ffa502; }
+        
+        .status-value { 
+            font-size: 2rem; 
+            font-weight: 700; 
+            color: #fafafa;
+            margin-top: 8px;
+        }
+        
+        .status-running { color: #22c55e; }
+        .status-error { color: #ef4444; }
+        .status-warning { color: #f59e0b; }
+        .status-info { color: #3b82f6; }
         
         .events-panel { 
-            background: rgba(255,255,255,0.15); 
-            backdrop-filter: blur(10px); 
-            border-radius: 15px; 
-            padding: 25px;
-            border: 1px solid rgba(255,255,255,0.2);
-            margin-bottom: 20px;
+            background: #18181b;
+            border: 1px solid #27272a;
+            border-radius: 12px; 
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .events-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        
+        .events-header h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #fafafa;
+        }
+        
+        .event-count-badge {
+            background: #3f3f46;
+            color: #e4e4e7;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
         }
         
         .events-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 15px 0;
+            background: #0f0f0f;
+            border-radius: 8px;
+            overflow: hidden;
         }
+        
         .events-table th {
-            background: rgba(255,255,255,0.2);
-            padding: 12px 8px;
+            background: #27272a;
+            padding: 16px 12px;
             text-align: left;
-            border-bottom: 2px solid rgba(255,255,255,0.3);
-            font-weight: bold;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: #fafafa;
+            border-bottom: 1px solid #3f3f46;
         }
+        
         .events-table td {
-            padding: 10px 8px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 14px 12px;
+            border-bottom: 1px solid #27272a;
             vertical-align: middle;
         }
+        
         .events-table tr:hover {
-            background: rgba(255,255,255,0.1);
+            background: #18181b;
         }
+        
+        .events-table tr:last-child td {
+            border-bottom: none;
+        }
+        
         .event-icon {
-            font-size: 1.2em;
+            font-size: 1.1rem;
             margin-right: 8px;
         }
+        
+        .event-name {
+            font-weight: 500;
+            color: #fafafa;
+        }
+        
         .event-time {
-            font-family: 'Consolas', monospace;
-            font-size: 0.9em;
-            opacity: 0.8;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+            font-size: 0.875rem;
+            color: #a1a1aa;
         }
+        
         .event-user {
-            font-weight: bold;
+            font-weight: 500;
+            color: #e4e4e7;
         }
-        .event-success { color: #00ff88; }
-        .event-danger { color: #ff4757; }
-        .event-warning { color: #ffa502; }
-        .event-info { color: #74b9ff; }
+        
+        .event-id {
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+            font-size: 0.875rem;
+            color: #a1a1aa;
+            background: #27272a;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        
+        .event-success { color: #22c55e; }
+        .event-danger { color: #ef4444; }
+        .event-warning { color: #f59e0b; }
+        .event-info { color: #3b82f6; }
         
         .no-events {
             text-align: center;
-            padding: 40px;
-            opacity: 0.7;
+            padding: 48px 24px;
+            color: #71717a;
             font-style: italic;
         }
         
         .btn {
-            background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.3);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 25px;
+            background: #3f3f46;
+            border: 1px solid #52525b;
+            color: #fafafa;
+            padding: 10px 16px;
+            border-radius: 8px;
             text-decoration: none;
-            margin: 0 5px;
-            transition: all 0.3s ease;
-            display: inline-block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
             cursor: pointer;
-            font-size: 0.9em;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
+        
         .btn:hover {
-            background: rgba(255,255,255,0.3);
-            transform: translateY(-2px);
+            background: #52525b;
+            border-color: #71717a;
+            transform: translateY(-1px);
+        }
+        
+        .btn-primary {
+            background: #0ea5e9;
+            border-color: #0284c7;
+        }
+        
+        .btn-primary:hover {
+            background: #0284c7;
+            border-color: #0369a1;
         }
         
         .footer { 
             text-align: center; 
-            margin-top: 30px; 
-            opacity: 0.7; 
-            font-size: 0.9em;
+            margin-top: 32px; 
+            color: #71717a; 
+            font-size: 0.875rem;
         }
         
-        .error-message {
-            background: rgba(255,0,0,0.2);
-            padding: 10px;
-            border-radius: 10px;
-            margin: 10px 0;
-            border: 1px solid rgba(255,0,0,0.3);
+        .footer a {
+            color: #a1a1aa;
+            text-decoration: none;
+        }
+        
+        .footer a:hover {
+            color: #e4e4e7;
+        }
+        
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid;
+        }
+        
+        .alert-info {
+            background: #1e3a8a1a;
+            border-color: #3b82f6;
+            color: #93c5fd;
+        }
+        
+        .alert-warning {
+            background: #92400e1a;
+            border-color: #f59e0b;
+            color: #fbbf24;
+        }
+        
+        @media (max-width: 768px) {
+            .container { padding: 16px; }
+            .status-grid { grid-template-columns: 1fr; }
+            .events-header { flex-direction: column; align-items: flex-start; }
+            .events-table { font-size: 0.875rem; }
+            .events-table th, .events-table td { padding: 12px 8px; }
         }
     </style>
     <script>
-        // Event data from PowerShell - ROBUST ERROR HANDLING
         let eventData = [];
         let loadErrors = [];
         
         try {
 "@
 
-    # ROBUST: Better JavaScript event generation with limits and error handling
+    # Better JavaScript event generation with limits and error handling
     if ($displayedEventCount -gt 0) {
         $html += "console.log('Loading $displayedEventCount events...');"
         $html += "eventData = [`n"
@@ -315,13 +420,12 @@ function Get-DashboardHTML {
             try {
                 $eventItem = $recentEvents[$i]
                 
-                # ROBUST: Validate event has required properties
+                # Validate event has required properties
                 if (-not $eventItem.Time -or -not $eventItem.Name -or -not $eventItem.User) {
-                    Write-Host "Skipping invalid event at index $i" -ForegroundColor Red
                     continue
                 }
                 
-                # ROBUST: Sanitize all strings to prevent JavaScript breaks
+                # Sanitize all strings to prevent JavaScript breaks
                 $time = ($eventItem.Time -replace "'", "\'") -replace '"', '\"' -replace "`n", ' ' -replace "`r", ''
                 $name = ($eventItem.Name -replace "'", "\'") -replace '"', '\"' -replace "`n", ' ' -replace "`r", ''
                 $user = ($eventItem.User -replace "'", "\'") -replace '"', '\"' -replace "`n", ' ' -replace "`r", ''
@@ -350,14 +454,13 @@ function Get-DashboardHTML {
                 $validEvents++
                 
             } catch {
-                Write-Host "Error processing event $i : $($_.Exception.Message)" -ForegroundColor Red
                 continue
             }
         }
         $html += "`n            ];"
         $html += "`nconsole.log('Successfully loaded ' + eventData.length + ' events');"
     } else {
-        $html += "eventData = []; // No events available"
+        $html += "eventData = [];"
         $html += "`nconsole.log('No events to display');"
     }
 
@@ -370,18 +473,9 @@ function Get-DashboardHTML {
         
         function displayEvents() {
             const tbody = document.getElementById('events-tbody');
-            const errorDiv = document.getElementById('error-messages');
-            
-            // Clear previous errors
-            errorDiv.innerHTML = '';
-            
-            // Show any load errors
-            if (loadErrors.length > 0) {
-                errorDiv.innerHTML = '<div class="error-message">Errors loading events: ' + loadErrors.join(', ') + '</div>';
-            }
             
             if (eventData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="no-events">No security events to display. Try locking your screen or logging in/out to generate test events.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="no-events">No security events to display.<br>Try locking your screen or logging in/out to generate test events.</td></tr>';
                 return;
             }
             
@@ -389,20 +483,19 @@ function Get-DashboardHTML {
                 tbody.innerHTML = eventData.map(eventItem => 
                     '<tr class="event-' + (eventItem.color || 'info') + '">' +
                     '<td class="event-time">' + (eventItem.time || 'Unknown') + '</td>' +
-                    '<td><span class="event-icon">' + (eventItem.icon || '❓') + '</span>' + (eventItem.name || 'Unknown Event') + '</td>' +
+                    '<td><span class="event-icon">' + (eventItem.icon || '❓') + '</span><span class="event-name">' + (eventItem.name || 'Unknown Event') + '</span></td>' +
                     '<td class="event-user">' + (eventItem.user || 'Unknown') + '</td>' +
-                    '<td>' + (eventItem.eventId || 'N/A') + '</td>' +
+                    '<td><span class="event-id">' + (eventItem.eventId || 'N/A') + '</span></td>' +
                     '</tr>'
                 ).join('');
                 
                 console.log('Successfully displayed ' + eventData.length + ' events in table');
             } catch (e) {
                 console.error('Error displaying events:', e);
-                tbody.innerHTML = '<tr><td colspan="4" class="error-message">Error displaying events: ' + e.message + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="no-events">Error displaying events: ' + e.message + '</td></tr>';
             }
         }
         
-        // Initialize when page loads
         window.onload = function() {
             displayEvents();
             console.log('Dashboard loaded. Events array length: ' + eventData.length);
@@ -413,70 +506,67 @@ function Get-DashboardHTML {
     <div class="container">
         <div class="header">
             <h1>🛡️ Security Alert Dashboard</h1>
+            <div class="subtitle">Real-time security monitoring for <strong>$($status.ComputerName)</strong></div>
             <div class="port-info">Running on Port $Port</div>
-            <p>Real-time security monitoring for <strong>$($status.ComputerName)</strong></p>
-            <p>Last updated: $($status.LastUpdate)</p>
         </div>
         
-        <!-- DEBUG INFO -->
-        <div class="debug-info">
-            <strong>Debug Info:</strong><br>
-            Total Events in System: $totalEventsInSystem<br>
-            Events Being Displayed: $displayedEventCount<br>
-            JavaScript Events: <span id="js-event-count">Loading...</span><br>
-            Status: $($status.Status)
-        </div>
-        
-        <!-- LIMIT WARNING -->
 "@
 
-    # Add warning if we're limiting events
-    if ($totalEventsInSystem -gt 25) {
+    # Add info alert if we're limiting events
+    if ($totalEventsInSystem -gt 30) {
         $html += @"
-        <div class="limit-warning">
-            <strong>Displaying Events</strong>
+        <div class="alert alert-info">
+            <strong>Performance Optimization:</strong> Displaying most recent 30 of $totalEventsInSystem total events for optimal performance.
         </div>
 "@
     }
 
     $html += @"
         
-        <!-- ERROR MESSAGES -->
-        <div id="error-messages"></div>
-        
         <div class="status-grid">
             <div class="status-card">
-                <div class="status-value status-$(if($status.Status -like '*Monitoring*'){'running'}elseif($status.Status -like '*Not Running*'){'error'}else{'unknown'})">
+                <div class="status-card-header">
+                    <div class="status-label">Service Status</div>
+                </div>
+                <div class="status-value status-$(if($status.Status -like '*Monitoring*'){'running'}elseif($status.Status -like '*Not Running*'){'error'}else{'warning'})">
                     $($status.Status)
                 </div>
-                <div class="status-label">Service Status</div>
             </div>
             <div class="status-card">
-                <div class="status-value">DesktopComputer</div>
-                <div class="status-label">Device</div>
+                <div class="status-card-header">
+                    <div class="status-label">Computer Name</div>
+                </div>
+                <div class="status-value">$($status.ComputerName)</div>
             </div>
             <div class="status-card">
-                <div class="status-value">$totalEventsInSystem</div>
-                <div class="status-label">Total Events</div>
+                <div class="status-card-header">
+                    <div class="status-label">Total Events</div>
+                </div>
+                <div class="status-value status-info">$totalEventsInSystem</div>
             </div>
             <div class="status-card">
+                <div class="status-card-header">
+                    <div class="status-label">Security Alerts</div>
+                </div>
                 <div class="status-value status-$(if($status.AlertCount -gt 0){'error'}else{'running'})">
                     $($status.AlertCount)
                 </div>
-                <div class="status-label">Security Alerts</div>
             </div>
         </div>
         
         <div class="events-panel">
-            <h3>📊 Security Events (showing $displayedEventCount of $totalEventsInSystem)</h3>
+            <div class="events-header">
+                <h3>Security Events</h3>
+                <div class="event-count-badge">Showing $displayedEventCount of $totalEventsInSystem events</div>
+            </div>
             
             <table class="events-table">
                 <thead>
                     <tr>
-                        <th>Time</th>
-                        <th>Event</th>
-                        <th>User</th>
-                        <th>ID</th>
+                        <th width="15%">Time</th>
+                        <th width="40%">Event</th>
+                        <th width="25%">User</th>
+                        <th width="20%">Event ID</th>
                     </tr>
                 </thead>
                 <tbody id="events-tbody">
@@ -484,19 +574,21 @@ function Get-DashboardHTML {
                 </tbody>
             </table>
             
-            <button class="btn" onclick="location.reload()">🔄 Refresh Now</button>
+            <div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="location.reload()">
+                    🔄 Refresh Dashboard
+                </button>
+                <button class="btn" onclick="window.open('http://localhost:$Port', '_blank')">
+                    🆕 New Window
+                </button>
+            </div>
         </div>
         
         <div class="footer">
-            <p>🚨 Security Alert Engine v3.0 | Dashboard on localhost:$Port</p>
-            <p>Displaying most recent events to ensure optimal performance</p>
+            <p><strong>Security Alert Engine v3.1</strong> | Enhanced monitoring with persistent logging</p>
+            <p>Last updated: $($status.LastUpdate) | Dashboard: localhost:$Port</p>
         </div>
     </div>
-    
-    <script>
-        // Update debug info after page loads
-        document.getElementById('js-event-count').textContent = eventData.length;
-    </script>
 </body>
 </html>
 "@
